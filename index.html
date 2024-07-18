@@ -1,0 +1,105 @@
+# main.py
+
+from flask import Flask, render_template, request, redirect, url_for
+import sqlite3
+
+app = Flask(__name__)
+
+# Veritabanı bağlantısını oluştur
+conn = sqlite3.connect('users.db')
+cursor = conn.cursor()
+
+# Kullanıcılar tablosunu oluştur
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        department TEXT NOT NULL
+    )
+''')
+
+# Değişiklikleri kaydet ve bağlantıyı kapat
+conn.commit()
+conn.close()
+
+# Ana sayfa, kullanıcıları gösteren endpoint
+@app.route('/')
+def index():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users')
+    users = cursor.fetchall()
+    conn.close()
+
+    # HTML içeriğini string olarak burada oluşturabilirsiniz
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>User Management</title>
+    </head>
+    <body>
+        <h1>User Management</h1>
+        
+        <form action="/add_user" method="post">
+            <label for="first_name">First Name:</label><br>
+            <input type="text" id="first_name" name="first_name" required><br>
+            
+            <label for="last_name">Last Name:</label><br>
+            <input type="text" id="last_name" name="last_name" required><br>
+            
+            <label for="department">Department:</label><br>
+            <input type="text" id="department" name="department" required><br><br>
+            
+            <input type="submit" value="Add User">
+        </form>
+
+        <h2>Users List</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Department</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user[1] }}</td>
+                    <td>{{ user[2] }}</td>
+                    <td>{{ user[3] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
+
+    return html_content
+
+# Yeni kullanıcı eklemek için endpoint
+@app.route('/add_user', methods=['POST'])
+def add_user():
+    first_name = request.form['first_name']
+    last_name = request.form['last_name']
+    department = request.form['department']
+
+    # Veritabanına kullanıcı ekle
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO users (first_name, last_name, department)
+        VALUES (?, ?, ?)
+    ''', (first_name, last_name, department))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
